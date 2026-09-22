@@ -1028,17 +1028,33 @@ export class LinkedInApiClient {
       isReshareDisabledByAuthor: false,
     };
 
-    if (data.mediaId) {
+    if (data.landingPageUrl) {
+      // A click-through single-image ad is an *article* post: the image
+      // becomes the thumbnail and the destination lives on
+      // `content.article.source`. Emitting `content.media` instead produces
+      // an image post with no link unit, so Campaign Manager renders neither
+      // a destination URL nor a CTA button and the ad is unclickable.
+      //
+      // `contentLandingPage` and `contentCallToActionLabel` must be sent in
+      // the same create call as the article block. LinkedIn silently drops
+      // the CTA when they are set without it, and patching it in afterwards
+      // returns 204 without persisting.
+      const article: Record<string, unknown> = { source: data.landingPageUrl };
+      if (data.mediaTitle) {
+        article.title = data.mediaTitle;
+      }
+      if (data.mediaId) {
+        article.thumbnail = data.mediaId;
+      }
+      post.content = { article };
+      post.contentLandingPage = data.landingPageUrl;
+    } else if (data.mediaId) {
       post.content = {
         media: {
           id: data.mediaId,
           title: data.mediaTitle || '',
         },
       };
-    }
-
-    if (data.landingPageUrl) {
-      post.contentLandingPage = data.landingPageUrl;
     }
 
     if (data.callToActionLabel) {
